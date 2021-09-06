@@ -3,9 +3,13 @@
 // Only one build running at a time, stop prior build if new build starts
 def buildNumber = BUILD_NUMBER as int; if (buildNumber > 1) milestone(buildNumber - 1); milestone(buildNumber) // Thanks to jglick
 
+/*
+ * Making sure that we can follow the steps necessary to install the latest
+ * release for Debian/Ubuntu machine.
+ */
+
 properties([
-    [$class: 'jenkins.model.BuildDiscarderProperty',
-        strategy: [$class: 'LogRotator', numToKeepStr: '5']],
+    buildDiscarder(logRotator(numToKeepStr: '5')),
     pipelineTriggers([cron('@hourly')]),
 ])
 
@@ -13,7 +17,7 @@ node('s390xdocker') {
     timestamps {
         docker.image('debian').inside('-u 0:0') {
             stage('Prepare Container') {
-                sh 'apt-get update -qy && apt-get install -qy --force-yes wget apt-transport-https gnupg2'
+                sh 'apt-get update -q -y && apt-get install -q -y --allow-change-held-packages wget apt-transport-https gnupg2'
             }
 
             stage('Add the apt key') {
@@ -27,4 +31,3 @@ node('s390xdocker') {
         }
     }
 }
-
