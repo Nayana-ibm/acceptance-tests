@@ -1,4 +1,4 @@
-#!/usr/bin/env groovy
+//!/usr/bin/env groovy
 
 // Only one build running at a time, stop prior build if new build starts
 def buildNumber = BUILD_NUMBER as int; if (buildNumber > 1) milestone(buildNumber - 1); milestone(buildNumber) // Thanks to jglick
@@ -13,7 +13,8 @@ properties([
     pipelineTriggers([cron('@hourly')]),
 ])
 
-def Processors = [ "arm64docker", "docker", "ppc64ledocker", "s390xdocker" ]
+def sequentialStages = [:]
+sequentialStages['Docker'] = [ "arm64docker", "docker", "ppc64ledocker", "s390xdocker", ]
 
 // Generate a parallel step for each label in labels
 def generateParallelSteps(labels) {
@@ -44,9 +45,11 @@ def generateParallelSteps(labels) {
     return parallelNodes
 }
 
-
 timeout(unit: 'MINUTES', time:29) {
-       stage("processor") {
-               parallel generateParallelSteps(Processors)
+    for (unboundStage in sequentialStages) {
+        def boundStage = unboundStage
+        stage(boundStage.key) {
+            parallel generateParallelSteps(sequentialStages[boundStage.key])
         }
+    }
 }
